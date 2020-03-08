@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>SchemaGen</title>
+  </head>
+  <body>
+    <h1>SchemaGen</h1>
+    <small>An automated schema generator for Shopify.</small>
+    <br><br>
+    <p>Only formatting rule is to prepend your type of block before giving it a namespace.
+    <br>
+    <p>Liquid code can only contain <code>1 underscore</code> for splitting, so for these types:</p>
+    <br>image: <code>{{ section.settings.image_picker_myImage }}</code> change to <code>{{ section.settings.image_myImage }}</code>.
+    <br>video: <code>{{ section.settings.video_picker_myVideo }}</code> change to <code>{{ section.settings.video_myVideo }}</code>.
+    <br>link: <code>{{ section.settings.link_list_myLinkList }}</code> change to <code>{{ section.settings.link_myLinkList }}</code>.
+    <br>font: <code>{{ section.settings.font_picker_myFont }}</code> change to <code>{{ section.settings.font_myFont }}</code>.
+    <br>
+    <br>
+    <label>Section Name</label>
+    <input type="text" name="section-name" id="section-name">
+    <label>HTML</label>
+    <textarea id="code-input" name="name" rows="8" cols="80" placeholder="Paste your HTML/Liquid here..."></textarea>
+    <br><button id="button" onClick="convert()" type="button" name="button">Convert</button>
+    <div id="schema"></div>
+
+    <script type="text/javascript">
+    /****************
+    * TO DO
+    ****************/
+
+    // Remove duplicate inputs (ex: a setting is used twice in the html)
+    // Support for multi-select, radio, etc fields
+    // Code consolidation
+    // Error flags if incorrect syntax is used
+
+      function capital_letter(str) {
+        str = str.split(" ");
+
+        for (var i = 0, x = str.length; i < x; i++) {
+            str[i] = str[i][0].toUpperCase() + str[i].substr(1);
+        }
+
+        return str.join(' ');
+      }
+
+      function parseTheCode() {
+        var code = document.getElementById('code-input').value;
+        code = code.split(' ');
+
+        var schemaData = [];
+        for (var i = 0; i < code.length; i++) {
+          var str = code[i];
+          if (str.includes('section.settings')) {
+            schemaData.push(str);
+          }
+        }
+
+        var blockData = [];
+        for (var i = 0; i < code.length; i++) {
+          var str = code[i];
+          if (str.includes('block.settings')) {
+            blockData.push(str);
+          }
+        }
+
+        var sectionName = document.getElementById('section-name').value;
+        var schema = '{% schema %}\n\t{\n\t\t"name": "'+sectionName+'",\n\t\t"settings": [';
+
+        for (var i = 0; i < schemaData.length; i++) {
+          var str = schemaData[i];
+
+          var type = str.split('_');
+          type = type[0].split('.');
+          type = type[2];
+          if (type == 'image') {
+            type = 'image_picker';
+          } else if (type == 'link') {
+            type = 'link_list';
+          } else if (type == 'font') {
+            type = 'font_picker';
+          } else if (type == 'video') {
+            type = 'video_url';
+          }
+
+          var id = str.split('.');
+
+          var label = id[2].split('_');
+
+          label = label[1].replace('-', ' ');
+          label = capital_letter(label);
+
+          if( (i+1) == schemaData.length ) {
+            schema += '\n\t\t{\n\t\t\t"type": "'+type+'",\n\t\t\t"id": "'+id[2]+'",\n\t\t\t"label": "'+label+'"\n\t\t}';
+          } else {
+            schema += '\n\t\t{\n\t\t\t"type": "'+type+'",\n\t\t\t"id": "'+id[2]+'",\n\t\t\t"label": "'+label+'"\n\t\t},';
+          }
+        }
+
+        if(blockData.length > 0) {
+          schema += '\n\t],\n\t"blocks": ['
+
+          for (var i = 0; i < blockData.length; i++) {
+            var str = blockData[i];
+            var type = str.split('_');
+            type = type[0].split('.');
+            type = type[2];
+              if (type == 'image') {
+                type = 'image_picker';
+              } else if (type == 'link') {
+                type = 'link_list';
+              } else if (type == 'font') {
+                type = 'font_picker';
+              } else if (type == 'video') {
+                type = 'video_url';
+              }
+
+              var id = str.split('.');
+
+              var label = id[2].split('_');
+
+              label = label[1].replace('-', ' ');
+              label = capital_letter(label);
+
+              if( (i+1) == blockData.length ) {
+                schema += '\n\t\t{\n\t\t\t"type": "'+type+'",\n\t\t\t"id": "'+id[2]+'",\n\t\t\t"label": "'+label+'"\n\t\t}';
+              } else {
+                schema += '\n\t\t{\n\t\t\t"type": "'+type+'",\n\t\t\t"id": "'+id[2]+'",\n\t\t\t"label": "'+label+'"\n\t\t},';
+              }
+            }
+          } // end if blocks
+
+
+        schema += '\n\t]\n}\n{% endschema %}';
+
+        return schema;
+      }
+
+
+      function convert() {
+
+        var parseThCode = parseTheCode();
+
+        document.getElementById('schema').innerText = parseThCode;
+
+      }
+    </script>
+
+    <style>
+      body {
+        font-family: 'arial';
+        line-height: 1.5;
+      }
+      code {
+        background: teal;
+        color: white;
+      }
+      input, label, textarea {
+          display: block;
+      }
+      h1 {
+        margin-bottom: 0;
+        font-family: 'courier';
+      }
+      #schema {
+        white-space: pre;
+        padding: 50px;
+      }
+    </style>
+  </body>
+</html>
